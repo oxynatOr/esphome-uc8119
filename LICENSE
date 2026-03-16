@@ -19,3 +19,25 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+THIRD-PARTY NOTICE: Siekoo 7-Segment Font
+
+The files `components/uc8119/siekoo.h` and `esp-idf-driver/siekoo.h` contain
+the Siekoo alphabet by Alexander Fakoó (https://fakoo.de/en/siekoo.html).
+
+The Siekoo font is licensed under:
+  Creative Commons Attribution-NonCommercial-NoDerivatives (CC BY-NC-ND)
+  Copyright (c) Alexander Fakoó
+
+This means the Siekoo font files:
+  - Require attribution to Alexander Fakoó
+  - May NOT be used for commercial purposes
+  - May NOT be modified or distributed in altered form
+
+The Siekoo font is OPTIONAL. The driver and display components work without it
+by setting `font: classic` in the ESPHome configuration. Removing the siekoo.h
+files does not affect driver functionality.
+
+All other files in this repository are licensed under the MIT License above.
