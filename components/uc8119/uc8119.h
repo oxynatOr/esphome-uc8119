@@ -18,10 +18,11 @@ static const uint8_t REG_PWR  = 0x01;  // Power Setting
 static const uint8_t REG_POF  = 0x02;  // Power OFF
 static const uint8_t REG_PFS  = 0x03;  // Mode: 0x00=Clear, 0x06=Normal
 static const uint8_t REG_PON  = 0x04;  // Power ON
+static const uint8_t REG_DSLP = 0x07;  // Deep Sleep (data=0xA5, wake by HW reset only)
 static const uint8_t REG_DRF  = 0x12;  // Display Refresh Trigger
 static const uint8_t REG_VCOM = 0x15;  // VCOM / Timing Config
-static const uint8_t REG_FB   = 0x18;  // Framebuffer Write
-static const uint8_t REG_OLDFB= 0x1C;  // Previous Framebuffer (diff update)
+static const uint8_t REG_FB   = 0x18;  // Framebuffer Write (new data)
+static const uint8_t REG_OLDFB= 0x1C;  // Previous Framebuffer (for diff update)
 static const uint8_t REG_LUTC = 0x20;  // LUT VCOM
 static const uint8_t REG_LUTWB= 0x23;  // LUT White-to-Black
 static const uint8_t REG_LUTBB= 0x24;  // LUT Black-to-Black
@@ -82,6 +83,22 @@ class UC8119 : public Component, public i2c::I2CDevice {
   /// Check if the driver has been initialized
   bool is_ready() const { return this->initialized_; }
 
+  // ─── Power management ─────────────────────────────────────────
+
+  /// Power on: enable pin HIGH → hardware reset → wait busy
+  /// Called automatically in setup(), but can be used manually after power_off()
+  void power_on();
+
+  /// Power off: POF command → enable pin LOW (if configured)
+  /// Call this before ESP32 deep sleep to fully power down the display.
+  /// The current framebuffer is saved to RTC memory for partial refresh on next wake.
+  void power_off();
+
+  /// Send UC8119 deep sleep command (register 0x07, check code 0xA5)
+  /// Alternative to power_off() for boards WITHOUT enable pin.
+  /// Wake requires hardware reset (power_on() or full reboot).
+  void deep_sleep_cmd();
+
  protected:
   GPIOPin *reset_pin_{nullptr};
   GPIOPin *busy_pin_{nullptr};
@@ -92,6 +109,7 @@ class UC8119 : public Component, public i2c::I2CDevice {
   uint8_t framebuffer_[FB_DATA_SIZE]{};
   uint8_t committed_fb_[FB_DATA_SIZE]{};
   bool initialized_{false};
+  bool has_old_fb_{false};  // True if old FB restored from RTC memory
 
   uint32_t update_count_{0};
   uint32_t last_ghost_clear_ms_{0};
@@ -108,10 +126,15 @@ class UC8119 : public Component, public i2c::I2CDevice {
   void send_config_preamble_();
   void send_clear_luts_();
   void send_normal_luts_();
-  void send_framebuffer_with_terminator_(const uint8_t *fb);
+  void send_framebuffer_with_terminator_(uint8_t reg, const uint8_t *fb);
   void do_full_refresh_();
   void do_partial_refresh_();
-  void power_off_();
+  void do_partial_refresh_with_old_fb_(const uint8_t *old_fb);
+  void pof_cmd_();
+
+  // RTC memory
+  void save_to_rtc_();
+  bool load_from_rtc_();
 };
 
 }  // namespace uc8119
