@@ -223,7 +223,8 @@ Decode: sigrok-cli -P i2c:scl=D1:sda=D3
 
 ### Key Finding: BUSY Pin Behavior
 
-The BUSY pin goes LOW immediately after DRF (Display Refresh) command and returns HIGH when the refresh is complete. During RESET and deep sleep, the BUSY pin becomes high-impedance.
+The BUSY pin goes LOW immediately after DRF (Display Refresh) command and returns HIGH when the refresh is complete. 
+During RESET and deep sleep, the BUSY pin becomes high-impedance.
 
 
 
