@@ -6,6 +6,7 @@
 #ifdef USE_ESP32
 static RTC_DATA_ATTR uint32_t rtc_magic;
 static RTC_DATA_ATTR uint8_t  rtc_framebuffer[18];  // 17 data + 1 padding
+static RTC_DATA_ATTR uint32_t rtc_update_count;
 #endif
 static const uint32_t RTC_MAGIC_VALUE = 0x8119CAFE;
 
@@ -52,6 +53,7 @@ void UC8119::wait_busy_(uint32_t timeout_ms) {
 void UC8119::save_to_rtc_() {
 #ifdef USE_ESP32
   memcpy(rtc_framebuffer, this->committed_fb_, FB_DATA_SIZE);
+  rtc_update_count = this->update_count_;
   rtc_magic = RTC_MAGIC_VALUE;
   ESP_LOGD(TAG, "FB saved to RTC");
 #endif
@@ -61,7 +63,8 @@ bool UC8119::load_from_rtc_() {
 #ifdef USE_ESP32
   if (rtc_magic != RTC_MAGIC_VALUE) return false;
   memcpy(this->committed_fb_, rtc_framebuffer, FB_DATA_SIZE);
-  ESP_LOGD(TAG, "FB restored from RTC");
+  this->update_count_ = rtc_update_count;
+  ESP_LOGD(TAG, "FB restored from RTC (updates: %u)", this->update_count_);
   return true;
 #else
   return false;  // No RTC memory — always full refresh
@@ -200,9 +203,17 @@ bool UC8119::commit() {
   if (!this->initialized_) return false;
   if (!this->is_dirty() && !this->ghost_clear_requested_) return false;
 
+  this->update_count_++;
+
+  // Ghost-clear decision: time-based (always-on) or count-based (deep sleep)
   bool need_gc = this->ghost_clear_requested_;
-  if (this->ghost_clear_interval_ms_ > 0 &&
+  // Time-based: works in always-on mode (millis() runs continuously)
+  if (!need_gc && this->ghost_clear_interval_ms_ > 0 &&
       (millis() - this->last_ghost_clear_ms_ >= this->ghost_clear_interval_ms_))
+    need_gc = true;
+  // Count-based: works in deep sleep mode (millis() resets each wake)
+  if (!need_gc && this->full_update_every_ > 0 &&
+      (this->update_count_ % this->full_update_every_) == 0)
     need_gc = true;
 
   if (need_gc) {
@@ -286,9 +297,10 @@ void UC8119::dump_config() {
                 "UC8119 EPD Segment Driver:\n"
                 "  Address: 0x%02X\n"
                 "  Segments: %d\n"
-                "  Ghost clear: %u min",
+                "  Ghost clear: %u min / every %u updates",
                 this->address_, FB_DATA_SIZE * 8,
-                this->ghost_clear_interval_ms_ / 60000);
+                this->ghost_clear_interval_ms_ / 60000,
+                this->full_update_every_);
   LOG_PIN("  Reset: ", this->reset_pin_);
   LOG_PIN("  Busy: ", this->busy_pin_);
   LOG_PIN("  Enable: ", this->enable_pin_);

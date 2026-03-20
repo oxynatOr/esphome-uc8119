@@ -2,6 +2,8 @@
 // UC8119 EPD Segment Display Driver
 // SPDX-License-Identifier: MIT
 //
+// Generic driver — no display-specific segment mapping or layout.
+// Use this as a base for any product with a UC8119 controller.
 
 #include "esphome/core/component.h"
 #include "esphome/components/i2c/i2c.h"
