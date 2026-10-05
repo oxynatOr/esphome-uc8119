@@ -5,7 +5,7 @@ from esphome.const import CONF_ID, CONF_RESET_PIN
 from esphome import pins
 
 DEPENDENCIES = ["i2c"]
-CODEOWNERS = ["@alex"]
+CODEOWNERS = ["@oxynatOr"]
 
 CONF_BUSY_PIN = "busy_pin"
 CONF_ENABLE_PIN = "enable_pin"
