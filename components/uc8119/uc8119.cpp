@@ -1,4 +1,5 @@
 #include "uc8119.h"
+#include "esphome/core/application.h"
 #include "esphome/core/log.h"
 #include <cstring>
 
@@ -40,11 +41,16 @@ void UC8119::hardware_reset_() {
 }
 
 void UC8119::wait_busy_(uint32_t timeout_ms) {
-  if (!this->busy_pin_) { delay(2000); return; }
+  if (!this->busy_pin_) {
+    // No busy pin: fixed wait, in slices so the watchdog keeps being fed
+    for (int i = 0; i < 200; i++) { delay(10); App.feed_wdt(); }
+    return;
+  }
   uint32_t start = millis();
   while (!this->busy_pin_->digital_read()) {
     if (millis() - start > timeout_ms) { ESP_LOGW(TAG, "BUSY timeout"); return; }
     delay(10);
+    App.feed_wdt();
   }
 }
 
@@ -64,7 +70,7 @@ bool UC8119::load_from_rtc_() {
   if (rtc_magic != RTC_MAGIC_VALUE) return false;
   memcpy(this->committed_fb_, rtc_framebuffer, FB_DATA_SIZE);
   this->update_count_ = rtc_update_count;
-  ESP_LOGD(TAG, "FB restored from RTC (updates: %u)", this->update_count_);
+  ESP_LOGD(TAG, "FB restored from RTC (updates: %lu)", (unsigned long) this->update_count_);
   return true;
 #else
   return false;  // No RTC memory — always full refresh
@@ -297,10 +303,10 @@ void UC8119::dump_config() {
                 "UC8119 EPD Segment Driver:\n"
                 "  Address: 0x%02X\n"
                 "  Segments: %d\n"
-                "  Ghost clear: %u min / every %u updates",
+                "  Ghost clear: %lu min / every %lu updates",
                 this->address_, FB_DATA_SIZE * 8,
-                this->ghost_clear_interval_ms_ / 60000,
-                this->full_update_every_);
+                (unsigned long) (this->ghost_clear_interval_ms_ / 60000),
+                (unsigned long) this->full_update_every_);
   LOG_PIN("  Reset: ", this->reset_pin_);
   LOG_PIN("  Busy: ", this->busy_pin_);
   LOG_PIN("  Enable: ", this->enable_pin_);
